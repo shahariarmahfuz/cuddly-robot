@@ -23,8 +23,7 @@ generation_config = {
 
 model = genai.GenerativeModel(
     model_name="gemini-1.5-pro",
-    generation_config=generation_config,
-    roles=["user", "model"]  # Adding roles here
+    generation_config=generation_config
 )
 
 chat_sessions = {}  # Dictionary to store chat sessions per user
@@ -73,6 +72,8 @@ def analyze_image():
     file.save(file_path)
     
     uploaded_file = upload_to_gemini(file_path, mime_type=file.mimetype)
+    print(f"Uploaded file URI: {uploaded_file.uri}")
+
     chat_session = model.start_chat(
         history=[f"Analyze the image at {uploaded_file.uri}"]
     )
