@@ -110,7 +110,7 @@ def ping():
     return jsonify({"status": "alive"})
 
 def keep_alive():
-    url = "https://your-app-url/ping"  # Replace with your actual URL
+    url = "https://cuddly-robot.onrender.com/ping"  # Replace with your actual URL
     while True:
         time.sleep(600)  # Ping every 15 minutes
         try:
