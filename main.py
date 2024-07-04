@@ -5,13 +5,6 @@ import threading
 import time
 import requests
 from collections import deque
-import tensorflow as tf
-from tensorflow.keras.applications import MobileNetV2
-from tensorflow.keras.applications.mobilenet_v2 import preprocess_input, decode_predictions
-from tensorflow.keras.preprocessing import image
-import numpy as np
-from PIL import Image
-import io
 
 app = Flask(__name__)
 
@@ -35,8 +28,11 @@ model = genai.GenerativeModel(
 
 chat_sessions = {}  # Dictionary to store chat sessions per user
 
-# Load pre-trained MobileNetV2 model
-image_model = MobileNetV2(weights='imagenet')
+def upload_to_gemini(path, mime_type=None):
+    """Uploads the given file to Gemini."""
+    file = genai.upload_file(path, mime_type=mime_type)
+    print(f"Uploaded file '{file.display_name}' as: {file.uri}")
+    return file
 
 @app.route('/ask', methods=['GET'])
 def ask():
@@ -44,7 +40,7 @@ def ask():
     user_id = request.args.get('id')
 
     if not query or not user_id:
-        return jsonify({"error": "অনুগ্রহ করে প্রশ্ন এবং ইউজার আইডি প্রদান করুন।"}), 400
+        return jsonify({"error": "Please provide both query and id parameters."}), 400
 
     if user_id not in chat_sessions:
         chat_sessions[user_id] = {
@@ -63,61 +59,34 @@ def ask():
 
     return jsonify({"response": response.text})
 
-@app.route('/analyze_image', methods=['GET'])
+@app.route('/analyze-image', methods=['POST'])
 def analyze_image():
-    user_id = request.args.get('id')
-    question = request.args.get('q')
-    image_url = request.args.get('image_url')
-
-    if not user_id or not question or not image_url:
-        return jsonify({"error": "অনুগ্রহ করে ইউজার আইডি, প্রশ্ন এবং ইমেজ URL প্রদান করুন।"}), 400
-
-    if user_id not in chat_sessions:
-        chat_sessions[user_id] = {
-            "chat": model.start_chat(history=[]),
-            "history": deque(maxlen=25)  # Stores the last 25 messages
-        }
-
-    chat_session = chat_sessions[user_id]["chat"]
-    history = chat_sessions[user_id]["history"]
-
-    # Download the image from the provided URL
-    try:
-        response = requests.get(image_url)
-        response.raise_for_status()
-        img = Image.open(io.BytesIO(response.content))
-    except Exception as e:
-        return jsonify({"error": f"ইমেজ ডাউনলোড করতে ব্যর্থ হয়েছে: {str(e)}"}), 400
-
-    # Analyze the image using TensorFlow model
-    img = img.resize((224, 224))
-    x = image.img_to_array(img)
-    x = np.expand_dims(x, axis=0)
-    x = preprocess_input(x)
-
-    preds = image_model.predict(x)
-    labels = decode_predictions(preds, top=3)[0]
-    image_description = ', '.join([label[1] for label in labels])
-
-    # Combine image description with the user's question
-    combined_query = f"The image contains: {image_description}. {question}"
-
-    # Add the user query to history
-    history.append(f"User: {combined_query}")
-    bot_response = chat_session.send_message(combined_query)
-    # Add the bot response to history
-    history.append(f"Bot: {bot_response.text}")
-
-    return jsonify({"response": bot_response.text})
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+    
+    file_path = f"/tmp/{file.filename}"
+    file.save(file_path)
+    
+    uploaded_file = upload_to_gemini(file_path, mime_type=file.mimetype)
+    chat_session = model.start_chat(
+        history=[f"Analyze the image at {uploaded_file.uri}"]
+    )
+    response = chat_session.send_message(f"Analyze the image at {uploaded_file.uri}")
+    
+    return jsonify({"response": response.text})
 
 @app.route('/ping', methods=['GET'])
 def ping():
     return jsonify({"status": "alive"})
 
 def keep_alive():
-    url = "https://your-deployed-url/ping"  # Replace with your actual URL
+    url = "https://your-app-url/ping"  # Replace with your actual URL
     while True:
-        time.sleep(600)  # Ping every 10 minutes
+        time.sleep(600)  # Ping every 15 minutes
         try:
             response = requests.get(url)
             if response.status_code == 200:
