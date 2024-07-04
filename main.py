@@ -69,10 +69,11 @@ def ask():
 
 @app.route('/analyze-image', methods=['POST'])
 def analyze_image():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
+    if 'file' not in request.files or 'q' not in request.form:
+        return jsonify({"error": "Please provide both a file and a query."}), 400
 
     file = request.files['file']
+    query = request.form['q']
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
 
@@ -92,12 +93,12 @@ def analyze_image():
             history=[{
                 "role": "user",
                 "parts": [
-                    {"type": "file", "content": uploaded_file.uri},
-                    "এখন কি আছে?"
+                    {"type": "image", "content": uploaded_file.uri},
+                    {"type": "text", "content": query}
                 ]
             }]
         )
-        response = chat_session.send_message(f"Analyze the image at {uploaded_file.uri}")
+        response = chat_session.send_message(query)
 
         return jsonify({"response": response.text})
 
