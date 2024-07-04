@@ -1,10 +1,10 @@
-import os
 from flask import Flask, request, jsonify
 import google.generativeai as genai
 import threading
 import time
 import requests
 from collections import deque
+import os
 
 app = Flask(__name__)
 
@@ -24,6 +24,7 @@ generation_config = {
 model = genai.GenerativeModel(
     model_name="gemini-1.5-pro",
     generation_config=generation_config,
+    roles=["user", "model"]  # Adding roles here
 )
 
 chat_sessions = {}  # Dictionary to store chat sessions per user
