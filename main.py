@@ -92,8 +92,15 @@ def analyze_image():
             history=[{
                 "role": "user",
                 "parts": [
-                    {"inline_data": {"type": "image", "content": uploaded_file.uri}},
-                    {"inline_data": {"type": "text", "content": query}}
+                    {
+                        "type": "file",
+                        "content": uploaded_file.uri,
+                        "mime_type": file.mimetype
+                    },
+                    {
+                        "type": "text",
+                        "content": query
+                    }
                 ]
             }]
         )
