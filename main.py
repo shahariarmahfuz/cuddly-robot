@@ -89,7 +89,13 @@ def analyze_image():
         logging.info(f"Uploaded file URI: {uploaded_file.uri}")
 
         chat_session = model.start_chat(
-            history=[f"Analyze the image at {uploaded_file.uri}"]
+            history=[{
+                "role": "user",
+                "parts": [
+                    {"type": "file", "content": uploaded_file.uri},
+                    "এখন কি আছে?"
+                ]
+            }]
         )
         response = chat_session.send_message(f"Analyze the image at {uploaded_file.uri}")
 
