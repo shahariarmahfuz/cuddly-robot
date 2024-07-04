@@ -1,4 +1,5 @@
 Flask
 google-generativeai
+tensorflow
 Pillow
 requests
