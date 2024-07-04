@@ -5,8 +5,12 @@ import time
 import requests
 from collections import deque
 import os
+import logging
 
 app = Flask(__name__)
+
+# Setup logging
+logging.basicConfig(level=logging.DEBUG)
 
 # Get API key from environment variable
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -30,9 +34,13 @@ chat_sessions = {}  # Dictionary to store chat sessions per user
 
 def upload_to_gemini(path, mime_type=None):
     """Uploads the given file to Gemini."""
-    file = genai.upload_file(path, mime_type=mime_type)
-    print(f"Uploaded file '{file.display_name}' as: {file.uri}")
-    return file
+    try:
+        file = genai.upload_file(path, mime_type=mime_type)
+        logging.info(f"Uploaded file '{file.display_name}' as: {file.uri}")
+        return file
+    except Exception as e:
+        logging.error(f"Failed to upload file: {e}")
+        raise
 
 @app.route('/ask', methods=['GET'])
 def ask():
@@ -63,23 +71,33 @@ def ask():
 def analyze_image():
     if 'file' not in request.files:
         return jsonify({"error": "No file part"}), 400
-    
+
     file = request.files['file']
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
-    
-    file_path = f"/tmp/{file.filename}"
-    file.save(file_path)
-    
-    uploaded_file = upload_to_gemini(file_path, mime_type=file.mimetype)
-    print(f"Uploaded file URI: {uploaded_file.uri}")
 
-    chat_session = model.start_chat(
-        history=[f"Analyze the image at {uploaded_file.uri}"]
-    )
-    response = chat_session.send_message(f"Analyze the image at {uploaded_file.uri}")
+    file_path = f"/tmp/{file.filename}"
     
-    return jsonify({"response": response.text})
+    # Ensure the /tmp/ directory exists
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+    try:
+        file.save(file_path)
+        logging.info(f"File saved at {file_path}")
+
+        uploaded_file = upload_to_gemini(file_path, mime_type=file.mimetype)
+        logging.info(f"Uploaded file URI: {uploaded_file.uri}")
+
+        chat_session = model.start_chat(
+            history=[f"Analyze the image at {uploaded_file.uri}"]
+        )
+        response = chat_session.send_message(f"Analyze the image at {uploaded_file.uri}")
+
+        return jsonify({"response": response.text})
+
+    except Exception as e:
+        logging.error(f"Error processing file: {e}")
+        return jsonify({"error": "Failed to process the file."}), 500
 
 @app.route('/ping', methods=['GET'])
 def ping():
@@ -92,11 +110,11 @@ def keep_alive():
         try:
             response = requests.get(url)
             if response.status_code == 200:
-                print("Ping successful")
+                logging.info("Ping successful")
             else:
-                print("Ping failed with status code", response.status_code)
+                logging.error(f"Ping failed with status code {response.status_code}")
         except Exception as e:
-            print("Ping failed with exception", e)
+            logging.error(f"Ping failed with exception {e}")
 
 if __name__ == '__main__':
     # Start keep-alive thread
