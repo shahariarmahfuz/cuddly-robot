@@ -2,10 +2,9 @@ from flask import Flask, request, jsonify
 import google.generativeai as genai
 import threading
 import time
-import requests
-from collections import deque
 import os
 import logging
+from collections import deque
 
 app = Flask(__name__)
 
