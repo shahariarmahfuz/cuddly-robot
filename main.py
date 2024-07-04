@@ -92,8 +92,8 @@ def analyze_image():
             history=[{
                 "role": "user",
                 "parts": [
-                    {"type": "image", "content": uploaded_file.uri},
-                    {"type": "text", "content": query}
+                    {"inline_data": {"type": "image", "content": uploaded_file.uri}},
+                    {"inline_data": {"type": "text", "content": query}}
                 ]
             }]
         )
@@ -110,7 +110,7 @@ def ping():
     return jsonify({"status": "alive"})
 
 def keep_alive():
-    url = "https://cuddly-robot.onrender.com/ping"  # Replace with your actual URL
+    url = "https://your-app-url/ping"  # Replace with your actual URL
     while True:
         time.sleep(600)  # Ping every 15 minutes
         try:
